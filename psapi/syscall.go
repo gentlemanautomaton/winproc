@@ -20,9 +20,11 @@ var (
 	procModule32Next             = modkernel32.NewProc("Module32NextW")
 )
 
-// CreateSnapshot builds and returns a device information list that contains
-// devices matching the given parameters. It calls the CreateToolhelp32Snapshot
-// windows API function.
+// CreateSnapshot prepares a process, heap or module snapshot according to the
+// provided flags. It calls the CreateToolhelp32Snapshot windows API function.
+//
+// It is the caller's responsibility to close the returned snapshot handle when
+// finished with it by calling syscall.CloseHandle().
 //
 // https://docs.microsoft.com/en-us/windows/desktop/api/tlhelp32/nf-tlhelp32-createtoolhelp32snapshot
 func CreateSnapshot(flags uint32, processID uint32) (handle syscall.Handle, err error) {

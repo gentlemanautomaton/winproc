@@ -32,6 +32,7 @@ func List(options ...CollectionOption) ([]Process, error) {
 			ID:       int(entry.ProcessID),
 			ParentID: int(entry.ParentProcessID),
 			Name:     entry.Name(),
+			Threads:  int(entry.Threads),
 		})
 	}
 	if err != io.EOF {

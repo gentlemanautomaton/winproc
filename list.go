@@ -23,6 +23,7 @@ func List(options ...CollectionOption) ([]Process, error) {
 	}
 	defer syscall.CloseHandle(snapshot)
 
+	// Step 1: Collect all processes from the system
 	var (
 		procs []Process
 		entry psapi.ProcessEntry
@@ -39,6 +40,12 @@ func List(options ...CollectionOption) ([]Process, error) {
 		return nil, err
 	}
 
+	// Step 2: Remove processes that don't match the provided filters
+	if len(opts.Include) > 0 {
+		procs = applyFilters(procs, opts)
+	}
+
+	// Step 3: Collect process path information if it's been requested
 	if opts.CollectPaths {
 		var wg sync.WaitGroup
 		wg.Add(len(procs))
@@ -56,6 +63,88 @@ func List(options ...CollectionOption) ([]Process, error) {
 	}
 
 	return procs, nil
+}
+
+func applyFilters(procs []Process, opts collectionOpts) (filtered []Process) {
+	// Fast path for basic filtering that doesn't require relationships
+	if !opts.IncludeAncestors && !opts.IncludeDescendants {
+		for i := range procs {
+			if MatchAny(procs[i], opts.Include...) {
+				filtered = append(filtered, procs[i])
+			}
+		}
+		return filtered
+	}
+
+	// Pass 1: Build relationships and a map of direct matches
+	parents := make(map[int]int)    // Maps process ID to parent ID
+	children := make(map[int][]int) // Maps parent ID to child process ID
+	matched := make(map[int]bool)   // Matched processes
+	for _, process := range procs {
+		parents[process.ID] = process.ParentID
+		children[process.ParentID] = append(children[process.ParentID], process.ID)
+		if MatchAny(process, opts.Include...) {
+			matched[process.ID] = true
+		}
+	}
+
+	// Pass 2: Include ancestors
+	descendantMatched := make(map[int]bool) // Processes with a matched descendant
+	if opts.IncludeAncestors {
+		for i := range procs {
+			pid := procs[i].ID
+			if !matched[pid] {
+				continue
+			}
+			for {
+				if descendantMatched[pid] {
+					break // Already processed
+				}
+				descendantMatched[pid] = true
+				parent, ok := parents[pid]
+				if !ok || parent == pid {
+					break
+				}
+				pid = parent
+			}
+		}
+	}
+
+	// Pass 3: Include descendants
+	ancestorMatched := make(map[int]bool) // Processes with a matched ancestor
+	if opts.IncludeDescendants {
+		for i := range procs {
+			pid := procs[i].ID
+			if !matched[pid] {
+				continue
+			}
+			next, ok := children[pid]
+			if !ok {
+				continue
+			}
+			for len(next) > 0 {
+				current := next
+				next = nil
+				for _, child := range current {
+					if ancestorMatched[child] {
+						continue // Already processed
+					}
+					ancestorMatched[child] = true
+					next = append(next, children[child]...)
+				}
+			}
+		}
+	}
+
+	// Pass 4: Union of all matches
+	for i := range procs {
+		pid := procs[i].ID
+		if matched[pid] || ancestorMatched[pid] || descendantMatched[pid] {
+			filtered = append(filtered, procs[i])
+		}
+	}
+
+	return filtered
 }
 
 func collectPath(processID uint32) string {

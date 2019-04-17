@@ -9,9 +9,11 @@ import (
 )
 
 func ExampleList() {
-	procs, err := winproc.List(winproc.CollectPaths)
+	procs, err := winproc.List(
+		winproc.Include(winproc.ContainsName("winlogon")),
+		winproc.IncludeAncestors)
 	if err != nil {
-		fmt.Printf("failed to retrieve process list: %v\n", err)
+		fmt.Printf("Failed to retrieve process list: %v\n", err)
 		return
 	}
 

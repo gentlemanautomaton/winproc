@@ -4,9 +4,9 @@ import (
 	"github.com/gentlemanautomaton/winproc"
 )
 
-func makeOptions(pids []int, names []string, ancestors, descendants bool) (opts []winproc.CollectionOption) {
+func makeOptions(pids []uint32, names []string, ancestors, descendants bool) (opts []winproc.CollectionOption) {
 	for _, pid := range pids {
-		opts = append(opts, winproc.Include(winproc.MatchPID(pid)))
+		opts = append(opts, winproc.Include(winproc.MatchID(winproc.ID(pid))))
 	}
 
 	for _, name := range names {

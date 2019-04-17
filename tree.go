@@ -9,8 +9,8 @@ func Tree(options ...CollectionOption) ([]Node, error) {
 		return nil, err
 	}
 
-	nodes := make(map[int]Process, len(procs))
-	hierarchy := make(map[int][]int, len(procs))
+	nodes := make(map[ID]Process, len(procs))
+	hierarchy := make(map[ID][]ID, len(procs))
 	for _, proc := range procs {
 		nodes[proc.ID] = proc
 		hierarchy[proc.ParentID] = append(hierarchy[proc.ParentID], proc.ID)
@@ -29,7 +29,7 @@ func Tree(options ...CollectionOption) ([]Node, error) {
 	return roots, nil
 }
 
-func childNodes(parent int, nodes map[int]Process, hierarchy map[int][]int) []Node {
+func childNodes(parent ID, nodes map[ID]Process, hierarchy map[ID][]ID) []Node {
 	childIDs := hierarchy[parent]
 	if len(childIDs) == 0 {
 		return nil

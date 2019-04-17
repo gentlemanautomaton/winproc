@@ -6,8 +6,8 @@ import "fmt"
 
 // Process holds information about a windows process.
 type Process struct {
-	ID       int
-	ParentID int
+	ID       ID
+	ParentID ID
 	Name     string
 	Path     string
 	Threads  int

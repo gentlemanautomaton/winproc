@@ -30,8 +30,8 @@ func List(options ...CollectionOption) ([]Process, error) {
 	)
 	for entry, err = psapi.FirstProcess(snapshot); err == nil; entry, err = psapi.NextProcess(snapshot) {
 		procs = append(procs, Process{
-			ID:       int(entry.ProcessID),
-			ParentID: int(entry.ParentProcessID),
+			ID:       ID(entry.ProcessID),
+			ParentID: ID(entry.ParentProcessID),
 			Name:     entry.Name(),
 			Threads:  int(entry.Threads),
 		})
@@ -77,9 +77,9 @@ func applyFilters(procs []Process, opts collectionOpts) (filtered []Process) {
 	}
 
 	// Pass 1: Build relationships and a map of direct matches
-	parents := make(map[int]int)    // Maps process ID to parent ID
-	children := make(map[int][]int) // Maps parent ID to child process ID
-	matched := make(map[int]bool)   // Matched processes
+	parents := make(map[ID]ID)    // Maps process ID to parent ID
+	children := make(map[ID][]ID) // Maps parent ID to child process ID
+	matched := make(map[ID]bool)  // Matched processes
 	for _, process := range procs {
 		parents[process.ID] = process.ParentID
 		children[process.ParentID] = append(children[process.ParentID], process.ID)
@@ -89,7 +89,7 @@ func applyFilters(procs []Process, opts collectionOpts) (filtered []Process) {
 	}
 
 	// Pass 2: Include ancestors
-	descendantMatched := make(map[int]bool) // Processes with a matched descendant
+	descendantMatched := make(map[ID]bool) // Processes with a matched descendant
 	if opts.IncludeAncestors {
 		for i := range procs {
 			pid := procs[i].ID
@@ -111,7 +111,7 @@ func applyFilters(procs []Process, opts collectionOpts) (filtered []Process) {
 	}
 
 	// Pass 3: Include descendants
-	ancestorMatched := make(map[int]bool) // Processes with a matched ancestor
+	ancestorMatched := make(map[ID]bool) // Processes with a matched ancestor
 	if opts.IncludeDescendants {
 		for i := range procs {
 			pid := procs[i].ID

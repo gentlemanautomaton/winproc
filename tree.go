@@ -13,13 +13,17 @@ func Tree(options ...CollectionOption) ([]Node, error) {
 	hierarchy := make(map[ID][]ID, len(procs))
 	for _, proc := range procs {
 		nodes[proc.ID] = proc
-		hierarchy[proc.ParentID] = append(hierarchy[proc.ParentID], proc.ID)
+		if proc.ID != proc.ParentID {
+			hierarchy[proc.ParentID] = append(hierarchy[proc.ParentID], proc.ID)
+		}
 	}
 
 	var roots []Node
 	for _, proc := range procs {
-		if _, hasParent := nodes[proc.ParentID]; hasParent {
-			continue
+		if proc.ID != proc.ParentID {
+			if _, hasParent := nodes[proc.ParentID]; hasParent {
+				continue
+			}
 		}
 		roots = append(roots, Node{
 			Process:  proc,

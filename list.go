@@ -66,10 +66,12 @@ func List(options ...CollectionOption) ([]Process, error) {
 }
 
 func applyFilters(procs []Process, opts collectionOpts) (filtered []Process) {
+	match := MatchAny(opts.Include...)
+
 	// Fast path for basic filtering that doesn't require relationships
 	if !opts.IncludeAncestors && !opts.IncludeDescendants {
 		for i := range procs {
-			if MatchAny(procs[i], opts.Include...) {
+			if match(procs[i]) {
 				filtered = append(filtered, procs[i])
 			}
 		}
@@ -83,7 +85,7 @@ func applyFilters(procs []Process, opts collectionOpts) (filtered []Process) {
 	for _, process := range procs {
 		parents[process.ID] = process.ParentID
 		children[process.ParentID] = append(children[process.ParentID], process.ID)
-		if MatchAny(process, opts.Include...) {
+		if match(process) {
 			matched[process.ID] = true
 		}
 	}

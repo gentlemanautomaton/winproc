@@ -4,6 +4,9 @@ package winproc
 
 import "strings"
 
+// A StringMatcher is a function that matches strings
+type StringMatcher func(string) bool
+
 // A Filter returns true if it matches a process.
 type Filter func(Process) bool
 
@@ -15,7 +18,14 @@ func MatchID(pid ID) Filter {
 }
 
 // MatchName returns a filter that matches a process name.
-func MatchName(name string) Filter {
+func MatchName(matcher StringMatcher) Filter {
+	return func(process Process) bool {
+		return matcher(process.Name)
+	}
+}
+
+// EqualsName returns a filter that matches a process name case-insensitively.
+func EqualsName(name string) Filter {
 	return func(process Process) bool {
 		return strings.EqualFold(process.Name, name)
 	}

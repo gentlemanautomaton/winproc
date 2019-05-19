@@ -17,6 +17,35 @@ var (
 	procQueryInformationProcess = modntdll.NewProc("NtQueryInformationProcess")
 )
 
+// ProcessCommandLine requests the command line of a process from the
+// NT kernel. It calls ProcessInfo.
+//
+// This call is only supported on Windows 10 1511 or newer.
+func ProcessCommandLine(process syscall.Handle) (commandLine string, err error) {
+	var (
+		b      [2048]byte
+		buffer = b[:]
+		length uint32
+	)
+
+	for i := 0; i < 3; i++ {
+		length, err = ProcessInfo(process, processinfo.CommandLineInfo, buffer)
+		switch err {
+		case ntstatus.InfoLengthMismatch:
+			buffer = make([]byte, int(length))
+		case nil:
+			// A successful ProcessInfo call fills the buffer with a
+			// UnicodeString structure followed by the command line as utf16.
+			const start = unsafe.Sizeof(unicodeString{})
+			return utf16BytesToString(buffer[start:length]), nil
+		default:
+			return "", err
+		}
+	}
+
+	return "", err
+}
+
 // ProcessInfo requests information about a process from the NT kernel.
 // It calls the NtQueryInformationProcess NT native API function.
 //

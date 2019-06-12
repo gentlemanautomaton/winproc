@@ -15,12 +15,13 @@ type Process struct {
 	Path        string
 	Args        []string
 	CommandLine string
+	SessionID   uint32
 	Threads     int
 }
 
 // String returns a string representation of the process.
 func (p Process) String() string {
-	value := fmt.Sprintf("PID %d", p.ID)
+	value := fmt.Sprintf("[%d] PID %d", p.SessionID, p.ID)
 	switch {
 	case p.CommandLine != "":
 		value = fmt.Sprintf("%s: %s", value, p.CommandLine)

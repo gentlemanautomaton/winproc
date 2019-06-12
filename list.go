@@ -8,6 +8,9 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/gentlemanautomaton/winproc/nativeapi"
+	"github.com/gentlemanautomaton/winproc/processaccess"
+
 	"github.com/gentlemanautomaton/cmdline/cmdlinewindows"
 	"github.com/gentlemanautomaton/winproc/psapi"
 )
@@ -47,19 +50,32 @@ func List(options ...CollectionOption) ([]Process, error) {
 		procs = applyFilters(procs, opts)
 	}
 
-	// Step 3: Collect process command line information if requested
-	if opts.CollectCommands {
+	// Step 3: Collect process commands and/or sessions if requested
+	if opts.CollectCommands || opts.CollectSessions {
 		var wg sync.WaitGroup
 		wg.Add(len(procs))
 		for i := range procs {
 			go func(i int) {
 				defer wg.Done()
-				line, err := CommandLine(procs[i].ID)
+
+				process, err := syscall.OpenProcess(uint32(processaccess.QueryLimitedInformation), false, uint32(procs[i].ID))
 				if err != nil {
 					return
 				}
-				procs[i].CommandLine = strings.TrimSpace(line)
-				procs[i].Path, procs[i].Args = cmdlinewindows.SplitCommand(line)
+				defer syscall.CloseHandle(process)
+
+				if opts.CollectCommands {
+					if line, err := nativeapi.ProcessCommandLine(process); err == nil {
+						procs[i].CommandLine = strings.TrimSpace(line)
+						procs[i].Path, procs[i].Args = cmdlinewindows.SplitCommand(line)
+					}
+				}
+
+				if opts.CollectSessions {
+					if sessionID, err := nativeapi.ProcessSessionID(process); err == nil {
+						procs[i].SessionID = sessionID
+					}
+				}
 			}(i)
 		}
 		wg.Wait()

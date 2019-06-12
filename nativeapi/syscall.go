@@ -46,6 +46,23 @@ func ProcessCommandLine(process syscall.Handle) (commandLine string, err error) 
 	return "", err
 }
 
+// ProcessSessionID requests the session ID of a process from the
+// NT kernel. It calls ProcessInfo.
+func ProcessSessionID(process syscall.Handle) (sessionID uint32, err error) {
+	type sessionInfo struct {
+		SessionID uint32
+	}
+	const size = unsafe.Sizeof(sessionInfo{})
+
+	var buffer [size]byte
+	_, err = ProcessInfo(process, processinfo.SessionInfo, buffer[:])
+	if err != nil {
+		return 0, err
+	}
+
+	return (*sessionInfo)(unsafe.Pointer(&buffer[0])).SessionID, nil
+}
+
 // ProcessInfo requests information about a process from the NT kernel.
 // It calls the NtQueryInformationProcess NT native API function.
 //

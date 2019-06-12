@@ -14,8 +14,8 @@ func BenchmarkList(b *testing.B) {
 	}
 }
 
-func BenchmarkListWithPaths(b *testing.B) {
+func BenchmarkListWithCommands(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		winproc.List(winproc.CollectPaths)
+		winproc.List(winproc.CollectCommands)
 	}
 }

@@ -6,7 +6,7 @@ type collectionOpts struct {
 	Include            []Filter
 	IncludeAncestors   bool
 	IncludeDescendants bool
-	CollectPaths       bool
+	CollectCommands    bool
 }
 
 // CollectionOption is a process collection option.
@@ -32,7 +32,8 @@ func IncludeDescendants(opts *collectionOpts) {
 	opts.IncludeDescendants = true
 }
 
-// CollectPaths is an option that enables process path collection.
-func CollectPaths(opts *collectionOpts) {
-	opts.CollectPaths = true
+// CollectCommands is an option that enables collection of process
+// command line, path and argument information.
+func CollectCommands(opts *collectionOpts) {
+	opts.CollectCommands = true
 }

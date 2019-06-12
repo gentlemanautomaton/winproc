@@ -14,7 +14,7 @@ func ExampleTree() {
 		winproc.Include(winproc.ContainsName("svchost")),
 		winproc.IncludeAncestors,
 		winproc.IncludeDescendants,
-		winproc.CollectPaths)
+		winproc.CollectCommands)
 	if err != nil {
 		fmt.Printf("Failed to retrieve process tree: %v\n", err)
 		return

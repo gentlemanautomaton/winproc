@@ -4,9 +4,11 @@ package winproc
 
 import (
 	"io"
+	"strings"
 	"sync"
 	"syscall"
 
+	"github.com/gentlemanautomaton/cmdline/cmdlinewindows"
 	"github.com/gentlemanautomaton/winproc/psapi"
 )
 
@@ -45,18 +47,19 @@ func List(options ...CollectionOption) ([]Process, error) {
 		procs = applyFilters(procs, opts)
 	}
 
-	// Step 3: Collect process path information if it's been requested
-	if opts.CollectPaths {
+	// Step 3: Collect process command line information if requested
+	if opts.CollectCommands {
 		var wg sync.WaitGroup
 		wg.Add(len(procs))
 		for i := range procs {
 			go func(i int) {
 				defer wg.Done()
-				if procs[i].ID == 0 {
-					// PID 0 is the system process and its path can't be collected
+				line, err := CommandLine(procs[i].ID)
+				if err != nil {
 					return
 				}
-				procs[i].Path = collectPath(uint32(procs[i].ID))
+				procs[i].CommandLine = strings.TrimSpace(line)
+				procs[i].Path, procs[i].Args = cmdlinewindows.SplitCommand(line)
 			}(i)
 		}
 		wg.Wait()
@@ -147,18 +150,4 @@ func applyFilters(procs []Process, opts collectionOpts) (filtered []Process) {
 	}
 
 	return filtered
-}
-
-func collectPath(processID uint32) string {
-	snapshot, err := psapi.CreateSnapshot(psapi.SnapModule|psapi.SnapModule32, processID)
-	if err != nil {
-		return ""
-	}
-	defer syscall.CloseHandle(snapshot)
-
-	entry, err := psapi.FirstModule(snapshot)
-	if err != nil {
-		return ""
-	}
-	return entry.Path()
 }

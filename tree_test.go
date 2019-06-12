@@ -14,8 +14,8 @@ func BenchmarkTree(b *testing.B) {
 	}
 }
 
-func BenchmarkTreeWithPaths(b *testing.B) {
+func BenchmarkTreeWithCommands(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		winproc.Tree(winproc.CollectPaths)
+		winproc.Tree(winproc.CollectCommands)
 	}
 }

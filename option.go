@@ -8,6 +8,7 @@ type collectionOpts struct {
 	IncludeDescendants bool
 	CollectCommands    bool
 	CollectSessions    bool
+	CollectUsers       bool
 }
 
 // CollectionOption is a process collection option.
@@ -40,7 +41,13 @@ func CollectCommands(opts *collectionOpts) {
 }
 
 // CollectSessions is an option that enables collection of process
-// sessions IDs.
+// session information.
 func CollectSessions(opts *collectionOpts) {
 	opts.CollectSessions = true
+}
+
+// CollectUsers is an option that enables collection of process
+// user information.
+func CollectUsers(opts *collectionOpts) {
+	opts.CollectUsers = true
 }

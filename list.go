@@ -51,7 +51,7 @@ func List(options ...CollectionOption) ([]Process, error) {
 	}
 
 	// Step 3: Collect process commands and/or sessions if requested
-	if opts.CollectCommands || opts.CollectSessions {
+	if opts.CollectCommands || opts.CollectSessions || opts.CollectUsers {
 		var wg sync.WaitGroup
 		wg.Add(len(procs))
 		for i := range procs {
@@ -74,6 +74,12 @@ func List(options ...CollectionOption) ([]Process, error) {
 				if opts.CollectSessions {
 					if sessionID, err := nativeapi.ProcessSessionID(process); err == nil {
 						procs[i].SessionID = sessionID
+					}
+				}
+
+				if opts.CollectUsers {
+					if user, err := userFromProcess(process); err == nil {
+						procs[i].User = user
 					}
 				}
 			}(i)

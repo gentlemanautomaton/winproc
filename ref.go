@@ -78,7 +78,7 @@ func (ref *Ref) SessionID() (sessionID uint32, err error) {
 	return nativeapi.ProcessSessionID(ref.handle)
 }
 
-// User returns information about the account under which the process  of the windows session associated with the
+// User returns information about the windows user associated with the
 // process.
 func (ref *Ref) User() (user User, err error) {
 	ref.mutex.RLock()

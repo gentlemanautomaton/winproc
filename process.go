@@ -18,6 +18,7 @@ type Process struct {
 	SessionID   uint32
 	User        User
 	Threads     int
+	Times       Times
 }
 
 // String returns a string representation of the process.
@@ -25,6 +26,16 @@ func (p Process) String() string {
 	value := fmt.Sprintf("[%d] PID %d", p.SessionID, p.ID)
 	if user := p.User.String(); user != "" {
 		value = fmt.Sprintf("%s (%s)", value, user)
+	}
+	if !p.Times.Creation.IsZero() {
+		if p.Times.Exit.IsZero() {
+			value = fmt.Sprintf("%s (created %s)", value, p.Times.Creation)
+		} else {
+			value = fmt.Sprintf("%s (created %s, exited %s)", value, p.Times.Creation, p.Times.Exit)
+		}
+	}
+	if p.Times.Kernel != 0 || p.Times.User != 0 {
+		value = fmt.Sprintf("%s (%s user %s kernel)", value, p.Times.Kernel, p.Times.User)
 	}
 	switch {
 	case p.CommandLine != "":

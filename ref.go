@@ -91,6 +91,28 @@ func (ref *Ref) User() (user User, err error) {
 	return userFromProcess(ref.handle)
 }
 
+// Times returns time information about the process.
+func (ref *Ref) Times() (times Times, err error) {
+	ref.mutex.RLock()
+	defer ref.mutex.RUnlock()
+
+	if ref.handle == syscall.InvalidHandle {
+		return Times{}, ErrClosed
+	}
+
+	var creation, exit, kernel, user syscall.Filetime
+	if err := syscall.GetProcessTimes(ref.handle, &creation, &exit, &kernel, &user); err != nil {
+		return Times{}, err
+	}
+
+	return Times{
+		Creation: timeFromFiletime(creation),
+		Exit:     timeFromFiletime(exit),
+		Kernel:   durationFromFiletime(kernel),
+		User:     durationFromFiletime(user),
+	}, nil
+}
+
 // Close releases the process handle maintained by ref.
 //
 // If ref has already been closed it will return ErrClosed.

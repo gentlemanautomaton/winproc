@@ -9,6 +9,7 @@ type collectionOpts struct {
 	CollectCommands    bool
 	CollectSessions    bool
 	CollectUsers       bool
+	CollectTimes       bool
 }
 
 // CollectionOption is a process collection option.
@@ -50,4 +51,10 @@ func CollectSessions(opts *collectionOpts) {
 // user information.
 func CollectUsers(opts *collectionOpts) {
 	opts.CollectUsers = true
+}
+
+// CollectTimes is an option that enables collection of process
+// time information.
+func CollectTimes(opts *collectionOpts) {
+	opts.CollectTimes = true
 }

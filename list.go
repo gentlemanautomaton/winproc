@@ -48,7 +48,7 @@ func List(options ...CollectionOption) ([]Process, error) {
 	}
 
 	// Step 3: Collect process commands and/or sessions if requested
-	if opts.CollectCommands || opts.CollectSessions || opts.CollectUsers {
+	if opts.CollectCommands || opts.CollectSessions || opts.CollectUsers || opts.CollectTimes {
 		var wg sync.WaitGroup
 		wg.Add(len(procs))
 		for i := range procs {
@@ -77,6 +77,12 @@ func List(options ...CollectionOption) ([]Process, error) {
 				if opts.CollectUsers {
 					if user, err := ref.User(); err == nil {
 						procs[i].User = user
+					}
+				}
+
+				if opts.CollectTimes {
+					if times, err := ref.Times(); err == nil {
+						procs[i].Times = times
 					}
 				}
 			}(i)

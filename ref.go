@@ -47,7 +47,14 @@ func Open(pid ID, rights ...processaccess.Rights) (*Ref, error) {
 // CommandLine returns the command line used to invoke the process.
 //
 // This call is only supported on Windows 10 1511 or newer.
+//
+// TODO: Consider adding support for older operating systems by using older,
+// more arcane implementations when necessary.
+//
+// https://wj32.org/wp/2009/01/24/howto-get-the-command-line-of-processes/
+// https://stackoverflow.com/questions/45891035/get-processid-from-binary-path-command-line-statement-in-c
 func (ref *Ref) CommandLine() (command string, err error) {
+
 	ref.mutex.RLock()
 	defer ref.mutex.RUnlock()
 

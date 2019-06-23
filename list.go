@@ -8,9 +8,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/gentlemanautomaton/winproc/nativeapi"
-	"github.com/gentlemanautomaton/winproc/processaccess"
-
 	"github.com/gentlemanautomaton/cmdline/cmdlinewindows"
 	"github.com/gentlemanautomaton/winproc/psapi"
 )
@@ -58,27 +55,27 @@ func List(options ...CollectionOption) ([]Process, error) {
 			go func(i int) {
 				defer wg.Done()
 
-				process, err := syscall.OpenProcess(uint32(processaccess.QueryLimitedInformation), false, uint32(procs[i].ID))
+				ref, err := Open(procs[i].ID)
 				if err != nil {
 					return
 				}
-				defer syscall.CloseHandle(process)
+				defer ref.Close()
 
 				if opts.CollectCommands {
-					if line, err := nativeapi.ProcessCommandLine(process); err == nil {
+					if line, err := ref.CommandLine(); err == nil {
 						procs[i].CommandLine = strings.TrimSpace(line)
 						procs[i].Path, procs[i].Args = cmdlinewindows.SplitCommand(line)
 					}
 				}
 
 				if opts.CollectSessions {
-					if sessionID, err := nativeapi.ProcessSessionID(process); err == nil {
+					if sessionID, err := ref.SessionID(); err == nil {
 						procs[i].SessionID = sessionID
 					}
 				}
 
 				if opts.CollectUsers {
-					if user, err := userFromProcess(process); err == nil {
+					if user, err := ref.User(); err == nil {
 						procs[i].User = user
 					}
 				}

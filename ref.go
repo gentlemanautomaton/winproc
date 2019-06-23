@@ -6,6 +6,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/gentlemanautomaton/winproc/nativeapi"
 	"github.com/gentlemanautomaton/winproc/processaccess"
 )
 
@@ -41,6 +42,46 @@ func Open(pid ID, rights ...processaccess.Rights) (*Ref, error) {
 		return nil, err
 	}
 	return &Ref{handle: handle}, nil
+}
+
+// CommandLine returns the command line used to invoke the process.
+//
+// This call is only supported on Windows 10 1511 or newer.
+func (ref *Ref) CommandLine() (command string, err error) {
+	ref.mutex.RLock()
+	defer ref.mutex.RUnlock()
+
+	if ref.handle == syscall.InvalidHandle {
+		return "", ErrClosed
+	}
+
+	return nativeapi.ProcessCommandLine(ref.handle)
+}
+
+// SessionID returns the ID of the windows session associated with the
+// process.
+func (ref *Ref) SessionID() (sessionID uint32, err error) {
+	ref.mutex.RLock()
+	defer ref.mutex.RUnlock()
+
+	if ref.handle == syscall.InvalidHandle {
+		return 0, ErrClosed
+	}
+
+	return nativeapi.ProcessSessionID(ref.handle)
+}
+
+// User returns information about the account under which the process  of the windows session associated with the
+// process.
+func (ref *Ref) User() (user User, err error) {
+	ref.mutex.RLock()
+	defer ref.mutex.RUnlock()
+
+	if ref.handle == syscall.InvalidHandle {
+		return User{}, ErrClosed
+	}
+
+	return userFromProcess(ref.handle)
 }
 
 // Close releases the process handle maintained by ref.

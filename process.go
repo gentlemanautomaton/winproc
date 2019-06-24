@@ -21,6 +21,19 @@ type Process struct {
 	Times       Times
 }
 
+// UniqueID returns a unique identifier for the process by combining its
+// creation time and process ID.
+//
+// The process must contain a creation time for this function to return a
+// unique value. This can be accomplished by supplying the CollectTimes
+// option when collecting processes.
+func (p Process) UniqueID() UniqueID {
+	return UniqueID{
+		Creation: p.Times.Creation.UnixNano(),
+		ID:       p.ID,
+	}
+}
+
 // String returns a string representation of the process.
 func (p Process) String() string {
 	value := fmt.Sprintf("[%d] PID %d", p.SessionID, p.ID)

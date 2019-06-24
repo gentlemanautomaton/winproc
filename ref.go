@@ -8,6 +8,7 @@ import (
 
 	"github.com/gentlemanautomaton/winproc/nativeapi"
 	"github.com/gentlemanautomaton/winproc/processaccess"
+	"golang.org/x/sys/windows"
 )
 
 // A Ref is a reference to a running or exited process. It manages an open
@@ -44,6 +45,48 @@ func Open(pid ID, rights ...processaccess.Rights) (*Ref, error) {
 	return &Ref{handle: handle}, nil
 }
 
+// ID returns the ID of the process.
+func (ref *Ref) ID() (ID, error) {
+	ref.mutex.RLock()
+	defer ref.mutex.RUnlock()
+
+	if ref.handle == syscall.InvalidHandle {
+		return 0, ErrClosed
+	}
+
+	id, err := windows.GetProcessId(windows.Handle(ref.handle))
+	if err != nil {
+		return 0, err
+	}
+	return ID(id), nil
+}
+
+// UniqueID returns a unique identifier for the process by combining its
+// creation time and process ID.
+func (ref *Ref) UniqueID() (UniqueID, error) {
+	ref.mutex.RLock()
+	defer ref.mutex.RUnlock()
+
+	if ref.handle == syscall.InvalidHandle {
+		return UniqueID{}, ErrClosed
+	}
+
+	id, err := windows.GetProcessId(windows.Handle(ref.handle))
+	if err != nil {
+		return UniqueID{}, err
+	}
+
+	var creation, exit, kernel, user syscall.Filetime
+	if err := syscall.GetProcessTimes(ref.handle, &creation, &exit, &kernel, &user); err != nil {
+		return UniqueID{}, err
+	}
+
+	return UniqueID{
+		Creation: creation.Nanoseconds(),
+		ID:       ID(id),
+	}, nil
+}
+
 // CommandLine returns the command line used to invoke the process.
 //
 // This call is only supported on Windows 10 1511 or newer.
@@ -54,7 +97,6 @@ func Open(pid ID, rights ...processaccess.Rights) (*Ref, error) {
 // https://wj32.org/wp/2009/01/24/howto-get-the-command-line-of-processes/
 // https://stackoverflow.com/questions/45891035/get-processid-from-binary-path-command-line-statement-in-c
 func (ref *Ref) CommandLine() (command string, err error) {
-
 	ref.mutex.RLock()
 	defer ref.mutex.RUnlock()
 

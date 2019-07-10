@@ -2,13 +2,8 @@
 
 package winproc
 
-// Tree returns a hierarchy of processes.
-func Tree(options ...CollectionOption) ([]Node, error) {
-	procs, err := List(options...)
-	if err != nil {
-		return nil, err
-	}
-
+// Tree creates a hierarchy out of a list of processes.
+func Tree(procs []Process) []Node {
 	// Build a lookup for each node and a map from parents to children
 	nodes := make(map[ID]Process, len(procs))
 	hierarchy := make(map[ID][]ID, len(procs))
@@ -30,7 +25,7 @@ func Tree(options ...CollectionOption) ([]Node, error) {
 			Children: childNodes(proc.ID, proc.ID, nodes, hierarchy),
 		})
 	}
-	return roots, nil
+	return roots
 }
 
 func findRoot(pid, parent ID, nodes map[ID]Process) ID {

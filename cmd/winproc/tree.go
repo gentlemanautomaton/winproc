@@ -9,12 +9,12 @@ import (
 )
 
 func tree(ctx context.Context, opts ...winproc.CollectionOption) {
-	procs, err := winproc.Tree(opts...)
+	procs, err := winproc.List(opts...)
 	if err != nil {
 		fmt.Printf("Failed to retrieve process tree: %v\n", err)
 		return
 	}
-	printChildren(0, procs)
+	printChildren(0, winproc.Tree(procs))
 }
 
 func printChildren(depth int, nodes []winproc.Node) {

@@ -10,17 +10,17 @@ import (
 )
 
 func ExampleTree() {
-	procs, err := winproc.Tree(
+	procs, err := winproc.List(
 		winproc.Include(winproc.ContainsName("svchost")),
 		winproc.IncludeAncestors,
 		winproc.IncludeDescendants,
 		winproc.CollectCommands)
 	if err != nil {
-		fmt.Printf("Failed to retrieve process tree: %v\n", err)
+		fmt.Printf("Failed to retrieve process list: %v\n", err)
 		return
 	}
 
-	printChildren(0, procs)
+	printChildren(0, winproc.Tree(procs))
 }
 
 func printChildren(depth int, nodes []winproc.Node) {

@@ -48,7 +48,7 @@ func TestWaitCancellation(t *testing.T) {
 	for _, delay := range delays {
 		delay := delay // Capture range variable
 		t.Run(fmt.Sprintf("Delay=%s", delay), func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			ctx, cancel := context.WithTimeout(context.Background(), delay)
 			defer cancel()
 
 			command := exec.Command("notepad")

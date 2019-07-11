@@ -3,6 +3,9 @@
 package winproc
 
 import (
+	"context"
+	"fmt"
+	"os"
 	"sync"
 	"syscall"
 
@@ -153,6 +156,81 @@ func (ref *Ref) Times() (times Times, err error) {
 		Kernel:   durationFromFiletime(kernel),
 		User:     durationFromFiletime(user),
 	}, nil
+}
+
+// Wait waits until the process terminates or ctx is cancelled. It
+// returns nil if the process has terminated.
+//
+// If ctx is cancelled the value of ctx.Err() will be returned.
+func (ref *Ref) Wait(ctx context.Context) error {
+	// Hold a read lock for the duration of the call. This will block
+	// calls to ref.Close() until we're done.
+	ref.mutex.RLock()
+	defer ref.mutex.RUnlock()
+
+	// Exit if the context has already been cancelled
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	// Make sure the process hasn't been closed already
+	if ref.handle == syscall.InvalidHandle {
+		return ErrClosed
+	}
+
+	// We need to wait on the process handle and the context simultaneously,
+	// so we'll prepare a windows event that will be signaled when ctx is
+	// cancelled and rely on WaitForMultipleObjects to wake up when something
+	// happens.
+	//
+	// The cancellation event will be signaled in a separate goroutine.
+	cancelled, err := windows.CreateEvent(nil, 1, 0, nil) // 2nd and 3rd arguments are booleans
+	if err != nil {
+		return err
+	}
+	defer windows.CloseHandle(cancelled)
+
+	// Derive a context that we'll cancel via defer to make sure the
+	// goroutine always exits
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
+
+	// Use a WaitGroup to know when the goroutine is done
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	// Create a goroutine that will signal the event when ctx is cancelled
+	go func() {
+		defer wg.Done()
+		<-ctx.Done()
+		windows.SetEvent(cancelled)
+	}()
+
+	// Wait for process termination or context cancellation
+	result, err := windows.WaitForMultipleObjects([]windows.Handle{
+		cancelled,                  // WAIT_OBJECT_0
+		windows.Handle(ref.handle), // WAIT_OBJECT_1
+	}, false, windows.INFINITE)
+
+	// Tell the goroutine to exit (in case it hasn't already)
+	cancel()
+
+	// Wait for the goroutine to exit (in case it hasn't already)
+	wg.Wait()
+
+	switch result {
+	case syscall.WAIT_OBJECT_0:
+		// The context was cancelled
+		return ctx.Err()
+	case syscall.WAIT_OBJECT_0 + 1:
+		// The process has terminated
+		return nil
+	case syscall.WAIT_FAILED:
+		return os.NewSyscallError("WaitForMultipleObjects", err)
+	default:
+		return fmt.Errorf("winproc.Ref: unexpected result from WaitForMultipleObjects: %d", result)
+	}
 }
 
 // Close releases the process handle maintained by ref.

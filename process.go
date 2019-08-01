@@ -34,6 +34,44 @@ func (p Process) UniqueID() UniqueID {
 	}
 }
 
+// Protected returns true if p represents a protected process of some kind:
+//
+//	All processes in session 0
+//	All processes running as Local System, NT Authority or Network Service
+//	All processes for which the SID has not been collected
+//	The process with ID 0
+//	The process with ID 4
+//
+// TODO: Skip anything with the CREATE_PROTECTED_PROCESS flag?
+func (p Process) Protected() bool {
+	// https://brianbondy.com/blog/100/understanding-windows-at-a-deeper-level-sessions-window-stations-and-desktops
+
+	// Anything in session zero is a system process
+	if p.SessionID == 0 {
+		return true
+	}
+
+	// The System Idle Process
+	if p.ID == 0 {
+		return true
+	}
+
+	// The System Process
+	if p.ID == 4 {
+		return true
+	}
+
+	// All unidentified processes and processes running with system security
+	// identifiers.
+	if p.User.SID == "" || p.User.System() {
+		return true
+	}
+
+	// The Evolution of Protected Processes: http://www.alex-ionescu.com/?p=97
+
+	return false
+}
+
 // String returns a string representation of the process.
 func (p Process) String() string {
 	value := fmt.Sprintf("[%d] PID %d", p.SessionID, p.ID)

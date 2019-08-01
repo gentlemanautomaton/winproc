@@ -4,6 +4,8 @@ package winproc
 
 import (
 	"syscall"
+
+	"github.com/gentlemanautomaton/winproc/winsecid"
 )
 
 // User holds account information for the security context of a process.
@@ -12,6 +14,22 @@ type User struct {
 	Account string
 	Domain  string
 	Type    uint32
+}
+
+// System returns true if u describes a system user with one of the following
+// security identifiers:
+//
+//	Local System
+//	NT Authority
+//	Network Service
+//
+func (u User) System() bool {
+	switch u.SID {
+	case winsecid.LocalSystem, winsecid.NTAuthority, winsecid.NetworkService:
+		return true
+	default:
+		return false
+	}
 }
 
 // String returns a string representation of the user.

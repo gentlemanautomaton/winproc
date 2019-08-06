@@ -2,177 +2,69 @@
 
 package winproc
 
-import (
-	"io"
-	"strings"
-	"sync"
-	"syscall"
-
-	"github.com/gentlemanautomaton/cmdline/cmdlinewindows"
-	"github.com/gentlemanautomaton/winproc/psapi"
-)
-
-// List returns a list of all running processes.
+// List returns a list of running processes. Collection options can be
+// provided to filter the list and collect additional process information.
+// Options will be evaluated in order.
+//
+// If a filter relies on process information gathered by one or more
+// collector options, those options must be included before the filter.
 func List(options ...CollectionOption) ([]Process, error) {
-	var opts collectionOpts
-	for _, option := range options {
-		option(&opts)
-	}
-
-	snapshot, err := psapi.CreateSnapshot(psapi.SnapProcess, 0)
+	// Collect all processes from the system
+	procs, err := scan()
 	if err != nil {
 		return nil, err
 	}
-	defer syscall.CloseHandle(snapshot)
 
-	// Step 1: Collect all processes from the system
-	var (
-		procs []Process
-		entry psapi.ProcessEntry
-	)
-	for entry, err = psapi.FirstProcess(snapshot); err == nil; entry, err = psapi.NextProcess(snapshot) {
-		procs = append(procs, Process{
-			ID:       ID(entry.ProcessID),
-			ParentID: ID(entry.ParentProcessID),
-			Name:     entry.Name(),
-			Threads:  int(entry.Threads),
-		})
-	}
-	if err != io.EOF {
-		return nil, err
+	// Form a collection
+	col := Collection{
+		Procs:    procs,
+		Excluded: make([]bool, len(procs)),
 	}
 
-	// Step 2: Remove processes that don't match the provided filters
-	if len(opts.Include) > 0 {
-		procs = applyFilters(procs, opts)
-	}
+	// Apply each collection option in order
+	for i := 0; i < len(options); i++ {
+		opt := options[i]
 
-	// Step 3: Collect process commands and/or sessions if requested
-	if opts.CollectCommands || opts.CollectSessions || opts.CollectUsers || opts.CollectTimes {
-		var wg sync.WaitGroup
-		wg.Add(len(procs))
-		for i := range procs {
-			go func(i int) {
-				defer wg.Done()
-
-				ref, err := Open(procs[i].ID)
-				if err != nil {
-					return
-				}
-				defer ref.Close()
-
-				if opts.CollectCommands {
-					if line, err := ref.CommandLine(); err == nil {
-						procs[i].CommandLine = strings.TrimSpace(line)
-						procs[i].Path, procs[i].Args = cmdlinewindows.SplitCommand(line)
-					}
-				}
-
-				if opts.CollectSessions {
-					if sessionID, err := ref.SessionID(); err == nil {
-						procs[i].SessionID = sessionID
-					}
-				}
-
-				if opts.CollectUsers {
-					if user, err := ref.User(); err == nil {
-						procs[i].User = user
-					}
-				}
-
-				if opts.CollectTimes {
-					if times, err := ref.Times(); err == nil {
-						procs[i].Times = times
-					}
-				}
-			}(i)
-		}
-		wg.Wait()
-	}
-
-	return procs, nil
-}
-
-func applyFilters(procs []Process, opts collectionOpts) (filtered []Process) {
-	match := MatchAny(opts.Include...)
-
-	// Fast path for basic filtering that doesn't require relationships
-	if !opts.IncludeAncestors && !opts.IncludeDescendants {
-		for i := range procs {
-			if match(procs[i]) {
-				filtered = append(filtered, procs[i])
-			}
-		}
-		return filtered
-	}
-
-	// Pass 1: Build relationships and a map of direct matches
-	parents := make(map[ID]ID)    // Maps process ID to parent ID
-	children := make(map[ID][]ID) // Maps parent ID to child process ID
-	matched := make(map[ID]bool)  // Matched processes
-	for _, process := range procs {
-		parents[process.ID] = process.ParentID
-		children[process.ParentID] = append(children[process.ParentID], process.ID)
-		if match(process) {
-			matched[process.ID] = true
-		}
-	}
-
-	// Pass 2: Include ancestors
-	descendantMatched := make(map[ID]bool) // Processes with a matched descendant
-	if opts.IncludeAncestors {
-		for i := range procs {
-			pid := procs[i].ID
-			if !matched[pid] {
-				continue
-			}
-			for {
-				if descendantMatched[pid] {
-					break // Already processed
-				}
-				descendantMatched[pid] = true
-				parent, ok := parents[pid]
-				if !ok || parent == pid {
-					break
-				}
-				pid = parent
-			}
-		}
-	}
-
-	// Pass 3: Include descendants
-	ancestorMatched := make(map[ID]bool) // Processes with a matched ancestor
-	if opts.IncludeDescendants {
-		for i := range procs {
-			pid := procs[i].ID
-			if !matched[pid] {
-				continue
-			}
-			next, ok := children[pid]
+		// Merge adjacent options when possible.
+		//
+		// This can improve efficiency by combining several options that work
+		// more efficiently as a batch.
+		for i+1 < len(options) {
+			mergable, ok := opt.(MergableCollectionOption)
 			if !ok {
-				continue
+				break
 			}
-			for len(next) > 0 {
-				current := next
-				next = nil
-				for _, child := range current {
-					if ancestorMatched[child] {
-						continue // Already processed
-					}
-					ancestorMatched[child] = true
-					next = append(next, children[child]...)
-				}
+			merged, ok := mergable.Merge(options[i+1])
+			if !ok {
+				break
 			}
+			opt = merged
+			i++
+		}
+
+		opt.Apply(&col)
+	}
+
+	// Count the number of matches
+	total := 0
+	for i := range col.Excluded {
+		if !col.Excluded[i] {
+			total++
 		}
 	}
 
-	// Pass 4: Union of all matches
-	for i := range procs {
-		pid := procs[i].ID
-		if matched[pid] || ancestorMatched[pid] || descendantMatched[pid] {
-			filtered = append(filtered, procs[i])
-		}
+	// If all procs matched just return the original slice
+	if len(col.Procs) == total {
+		return col.Procs, nil
 	}
 
-	return filtered
+	// Return the matches
+	matched := make([]Process, 0, total)
+	for i := range col.Procs {
+		if col.Excluded[i] {
+			continue
+		}
+		matched = append(matched, col.Procs[i])
+	}
+	return matched, nil
 }

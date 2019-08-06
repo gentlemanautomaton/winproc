@@ -2,39 +2,37 @@
 
 package winproc
 
-import "strings"
-
-// A StringMatcher is a function that matches strings
-type StringMatcher func(string) bool
-
 // A Filter returns true if it matches a process.
 type Filter func(Process) bool
 
-// MatchID returns a filter that matches a process ID.
-func MatchID(pid ID) Filter {
-	return func(process Process) bool {
-		return process.ID == pid
+// Include is an inclusion filter.
+type Include Filter
+
+// Apply applies the inclusion filter to the collection.
+func (include Include) Apply(col *Collection) {
+	if include == nil {
+		return
+	}
+
+	for i := range col.Procs {
+		if !col.Excluded[i] {
+			col.Excluded[i] = !include(col.Procs[i])
+		}
 	}
 }
 
-// MatchName returns a filter that matches a process name.
-func MatchName(matcher StringMatcher) Filter {
-	return func(process Process) bool {
-		return matcher(process.Name)
-	}
-}
+// Exclude is an exclusion filter.
+type Exclude Filter
 
-// EqualsName returns a filter that matches a process name case-insensitively.
-func EqualsName(name string) Filter {
-	return func(process Process) bool {
-		return strings.EqualFold(process.Name, name)
+// Apply applies the exclusion filter to the collection.
+func (exclude Exclude) Apply(col *Collection) {
+	if exclude == nil {
+		return
 	}
-}
 
-// ContainsName returns a filter that matches part of a process name.
-func ContainsName(name string) Filter {
-	name = strings.ToLower(name)
-	return func(process Process) bool {
-		return strings.Contains(strings.ToLower(process.Name), name)
+	for i := range col.Procs {
+		if !col.Excluded[i] {
+			col.Excluded[i] = exclude(col.Procs[i])
+		}
 	}
 }

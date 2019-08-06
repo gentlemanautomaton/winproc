@@ -5,12 +5,18 @@ import (
 )
 
 func makeOptions(pids []uint32, names []string, ancestors, descendants bool) (opts []winproc.CollectionOption) {
+	var filters []winproc.Filter
+
 	for _, pid := range pids {
-		opts = append(opts, winproc.Include(winproc.MatchID(winproc.ID(pid))))
+		filters = append(filters, winproc.MatchID(winproc.ID(pid)))
 	}
 
 	for _, name := range names {
-		opts = append(opts, winproc.Include(winproc.ContainsName(name)))
+		filters = append(filters, winproc.ContainsName(name))
+	}
+
+	if len(filters) > 0 {
+		opts = append(opts, winproc.Include(winproc.MatchAny(filters...)))
 	}
 
 	if ancestors {

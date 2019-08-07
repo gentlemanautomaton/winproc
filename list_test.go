@@ -38,8 +38,14 @@ func BenchmarkListWithTimes(b *testing.B) {
 	}
 }
 
+func BenchmarkListWithCriticality(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		winproc.List(winproc.CollectCriticality)
+	}
+}
+
 func BenchmarkListWithAll(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		winproc.List(winproc.CollectCommands, winproc.CollectSessions, winproc.CollectUsers, winproc.CollectTimes)
+		winproc.List(winproc.CollectCommands, winproc.CollectSessions, winproc.CollectUsers, winproc.CollectTimes, winproc.CollectCriticality)
 	}
 }

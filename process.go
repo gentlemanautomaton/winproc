@@ -19,6 +19,7 @@ type Process struct {
 	User        User
 	Threads     int
 	Times       Times
+	Critical    bool
 }
 
 // UniqueID returns a unique identifier for the process by combining its
@@ -74,7 +75,13 @@ func (p Process) Protected() bool {
 
 // String returns a string representation of the process.
 func (p Process) String() string {
-	value := fmt.Sprintf("[%d] PID %d", p.SessionID, p.ID)
+	var value string
+
+	if p.Critical {
+		value = fmt.Sprintf("[%d] PID %d!", p.SessionID, p.ID)
+	} else {
+		value = fmt.Sprintf("[%d] PID %d", p.SessionID, p.ID)
+	}
 	if user := p.User.String(); user != "" {
 		value = fmt.Sprintf("%s (%s)", value, user)
 	}

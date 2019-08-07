@@ -11,6 +11,7 @@ import (
 
 	"github.com/gentlemanautomaton/winproc/nativeapi"
 	"github.com/gentlemanautomaton/winproc/processaccess"
+	"github.com/gentlemanautomaton/winproc/procthreadapi"
 	"golang.org/x/sys/windows"
 )
 
@@ -156,6 +157,21 @@ func (ref *Ref) Times() (times Times, err error) {
 		Kernel:   durationFromFiletime(kernel),
 		User:     durationFromFiletime(user),
 	}, nil
+}
+
+// Critical returns true if the process is considered critical to the system's
+// operation.
+//
+// This call is only supported on Windows 8.1 or newer.
+func (ref *Ref) Critical() (bool, error) {
+	ref.mutex.RLock()
+	defer ref.mutex.RUnlock()
+
+	if ref.handle == syscall.InvalidHandle {
+		return false, ErrClosed
+	}
+
+	return procthreadapi.IsProcessCritical(ref.handle)
 }
 
 // Wait waits until the process terminates or ctx is cancelled. It

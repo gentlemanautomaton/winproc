@@ -27,7 +27,7 @@ func makeOptions(pids []uint32, names []string, ancestors, descendants bool) (op
 		opts = append(opts, winproc.IncludeDescendants)
 	}
 
-	opts = append(opts, winproc.CollectCommands, winproc.CollectSessions, winproc.CollectUsers, winproc.CollectTimes)
+	opts = append(opts, winproc.CollectCommands, winproc.CollectSessions, winproc.CollectUsers, winproc.CollectTimes, winproc.CollectCriticality)
 
 	return
 }

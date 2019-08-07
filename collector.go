@@ -32,6 +32,10 @@ const (
 	// CollectTimes is an option that enables collection of process
 	// time information.
 	CollectTimes
+
+	// CollectCriticality is an option that enables collection of process
+	// criticality information.
+	CollectCriticality
 )
 
 // Contains returns true if c contains b.
@@ -85,6 +89,12 @@ func (c Collector) Apply(col *Collection) {
 			if c.Contains(CollectTimes) {
 				if times, err := ref.Times(); err == nil {
 					proc.Times = times
+				}
+			}
+
+			if c.Contains(CollectCriticality) {
+				if critical, err := ref.Critical(); err == nil {
+					proc.Critical = critical
 				}
 			}
 		}(i)

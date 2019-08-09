@@ -249,6 +249,12 @@ func (ref *Ref) Wait(ctx context.Context) error {
 	}
 }
 
+// Terminate instructs the operating system to terminate the process with the
+// given exit code.
+func (ref *Ref) Terminate(exitCode uint32) error {
+	return procthreadapi.TerminateProcess(ref.handle, exitCode)
+}
+
 // Close releases the process handle maintained by ref.
 //
 // If ref has already been closed it will return ErrClosed.

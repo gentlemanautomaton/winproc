@@ -6,6 +6,8 @@ package winproc
 import (
 	"fmt"
 	"strings"
+
+	"github.com/gentlemanautomaton/winproc/processaccess"
 )
 
 // Process holds information about a windows process.
@@ -21,6 +23,15 @@ type Process struct {
 	Threads     int
 	Times       Times
 	Critical    bool
+}
+
+// Ref returns a reference to the running process that matches the process
+// ID of p.
+//
+// It is the caller's responsibility to close the reference when finished
+// with it.
+func (p Process) Ref(rights ...processaccess.Rights) (*Ref, error) {
+	return Open(p.ID, rights...)
 }
 
 // UniqueID returns a unique identifier for the process by combining its

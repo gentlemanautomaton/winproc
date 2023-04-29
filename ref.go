@@ -256,6 +256,27 @@ func (ref *Ref) Terminate(exitCode uint32) error {
 	return procthreadapi.TerminateProcess(ref.handle, exitCode)
 }
 
+// ExitCode returns the exit code for the process if it has exited.
+//
+// If the process is still running it returns ErrProcessStillActive.
+//
+// Due to the design of the underlying windows API call, this will incorrectly
+// return ErrProcessStillActive if the process exited with status code 259.
+// See the documentation for [GetExitCodeProcess] for more details.
+//
+// [GetExitCodeProcess]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getexitcodeprocess
+func (ref *Ref) ExitCode() (exitCode uint32, err error) {
+	const stillActive = 259
+	err = windows.GetExitCodeProcess(windows.Handle(ref.handle), &exitCode)
+	if err != nil {
+		return
+	}
+	if exitCode == stillActive {
+		err = ErrProcessStillActive
+	}
+	return
+}
+
 // Close releases the process handle maintained by ref.
 //
 // If ref has already been closed it will return ErrClosed.

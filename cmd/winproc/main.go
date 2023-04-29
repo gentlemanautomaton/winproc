@@ -4,8 +4,8 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/gentlemanautomaton/signaler"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 func main() {

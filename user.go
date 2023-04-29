@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package winproc
@@ -22,7 +23,6 @@ type User struct {
 //	Local System
 //	NT Authority
 //	Network Service
-//
 func (u User) System() bool {
 	switch u.SID {
 	case winsecid.LocalSystem, winsecid.NTAuthority, winsecid.NetworkService:
